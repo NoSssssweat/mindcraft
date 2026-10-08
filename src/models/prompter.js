@@ -135,14 +135,8 @@ export class Prompter {
     }
 
     async replaceStrings(prompt, messages, examples=null, to_summarize=[], last_goals=null) {
-    // SICHERHEITS-CHECK: Falls prompt kein gültiger Text ist, Absturz verhindern
-        if (!prompt || typeof prompt !== 'string') {
-            console.warn("Warnung: 'prompt' ist kein gültiger String in replaceStrings. Ersetze mit leerem Text.");
-            prompt = "";
-        }
-    
         prompt = prompt.replaceAll('$NAME', this.agent.name);
-    
+
         if (prompt.includes('$STATS')) {
             let stats = await getCommand('!stats').perform(this.agent) + '\n';
             stats += await getCommand('!entities').perform(this.agent) + '\n';
