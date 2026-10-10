@@ -222,6 +222,9 @@ export class Prompter {
             }
 
             let prompt = this.profile.conversing;
+            if (String(settings.language).toLowerCase() === 'en' || String(settings.language).toLowerCase() === 'english') {
+                prompt += '\n\nAlways respond in English. Communicate with players and other bots in English.';
+            }
             prompt = await this.replaceStrings(prompt, messages, this.convo_examples);
             let generation;
 

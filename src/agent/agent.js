@@ -146,6 +146,12 @@ export class Agent {
     }
 
     async _setupEventHandlers(save_data, init_message) {
+        const profileGoal = this.prompter.profile.goal;
+        const hasProfileGoal = typeof profileGoal === 'string' && profileGoal.trim().length > 0;
+        if (profileGoal !== undefined && !hasProfileGoal) {
+            console.error(`Ignoring invalid goal in profile for ${this.name}; expected a non-empty string.`);
+        }
+
         const ignore_messages = [
             "Set own game mode to",
             "Set the time to",
@@ -199,7 +205,9 @@ export class Agent {
             if (init_message) {
                 this.history.add('system', init_message);
             }
-            await this.self_prompter.handleLoad(save_data.self_prompt, save_data.self_prompting_state);
+            if (!hasProfileGoal) {
+                await this.self_prompter.handleLoad(save_data.self_prompt, save_data.self_prompting_state);
+            }
         }
         if (save_data?.last_sender) {
             this.last_sender = save_data.last_sender;
@@ -216,6 +224,16 @@ export class Agent {
         }
         else {
             this.openChat("Hello world! I am "+this.name);
+        }
+
+        if (hasProfileGoal) {
+            const goal = profileGoal.trim();
+            if (convoManager.inConversation()) {
+                this.self_prompter.setPromptPaused(goal);
+            }
+            else {
+                this.self_prompter.start(goal);
+            }
         }
     }
 
