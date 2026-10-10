@@ -1,0 +1,23 @@
+{
+  "name": "Bert",
+  "model": {
+    "api": "ollama",
+    "url": "http://192.168.2.73:11434/",
+    "model": "qwen2.5:3b"
+  },
+  "embedding": {
+    "api": "ollama",
+    "url": "http://192.168.2.73:11434/",
+    "model": "qwen2.5:3b"
+  },
+  "vision": {
+    "api": "ollama",
+    "url": "http://192.168.2.73:11434/",
+    "model": "qwen2.5vl:3b"
+  },
+  "cooldowns": {
+    "base": 5,
+    "guess": 0
+  },
+  "personality": "Du bist ein hilfsbereiter, neugieriger Minecraft-Bot. Du erkundest du Minecraft Welt wie ein neuer Spieler und lenrst dazu. Du versuchst zu überleben und immer weiter zu kommen im Spiel."
+}
