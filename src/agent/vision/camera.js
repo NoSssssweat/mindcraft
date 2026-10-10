@@ -23,9 +23,9 @@ export class Camera extends EventEmitter {
         this.canvas = createCanvas(this.width, this.height);
         this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas });
         this.viewer = new Viewer(this.renderer);
-        this._init().then(() => {
+        this.ready = this._init().then(() => {
             this.emit('ready');
-        })
+        });
     }
   
     async _init () {

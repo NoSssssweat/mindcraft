@@ -110,8 +110,6 @@ export class Agent {
             try {
                 clearTimeout(spawnTimeout);
                 addBrowserViewer(this.bot, count_id);
-                console.log('Initializing vision intepreter...');
-                this.vision_interpreter = new VisionInterpreter(this, settings.allow_vision);
 
                 // wait for a bit so stats are not undefined
                 await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -133,6 +131,9 @@ export class Agent {
                         this.task.setAgentGoal();
                     }
                 }
+
+                console.log('Initializing vision interpreter...');
+                this.vision_interpreter = new VisionInterpreter(this, settings.allow_vision);
 
                 await new Promise((resolve) => setTimeout(resolve, 10000));
                 this.checkAllPlayersPresent();

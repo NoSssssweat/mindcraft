@@ -7,13 +7,29 @@ export class VisionInterpreter {
         this.agent = agent;
         this.allow_vision = allow_vision;
         this.fp = './bots/'+agent.name+'/screenshots/';
-        if (allow_vision) {
-            this.camera = new Camera(agent.bot, this.fp);
+        this.ready = this.initialize();
+    }
+
+    async initialize() {
+        if (!this.allow_vision) {
+            return;
+        }
+        try {
+            this.camera = new Camera(this.agent.bot, this.fp);
+            await this.camera.ready;
+        } catch (error) {
+            this.allow_vision = false;
+            this.camera = null;
+            console.warn(`Vision initialization failed for ${this.agent.name}; disabling vision:`, error);
         }
     }
 
     async lookAtPlayer(player_name, direction) {
         if (!this.allow_vision || !this.agent.prompter.vision_model.sendVisionRequest) {
+            return "Vision is disabled. Use other methods to describe the environment.";
+        }
+        await this.ready;
+        if (!this.allow_vision) {
             return "Vision is disabled. Use other methods to describe the environment.";
         }
         let result = "";
@@ -40,6 +56,10 @@ export class VisionInterpreter {
 
     async lookAtPosition(x, y, z) {
         if (!this.allow_vision || !this.agent.prompter.vision_model.sendVisionRequest) {
+            return "Vision is disabled. Use other methods to describe the environment.";
+        }
+        await this.ready;
+        if (!this.allow_vision) {
             return "Vision is disabled. Use other methods to describe the environment.";
         }
         let result = "";
