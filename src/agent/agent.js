@@ -328,8 +328,11 @@ export class Agent {
         }
 
         // Handle other user messages
-        await this.history.add(source, message);
-        this.history.save();
+        // Don't add self-prompt system messages to history to avoid the LLM narrating them
+        if (!(source === 'system' && self_prompt && this.self_prompter.isActive())) {
+            await this.history.add(source, message);
+            this.history.save();
+        }
 
         if (!self_prompt && this.self_prompter.isActive()) // message is from user during self-prompting
             max_responses = 1; // force only respond to this message, then let self-prompting take over
