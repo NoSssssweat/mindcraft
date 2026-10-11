@@ -363,7 +363,11 @@ export class Agent {
                 if (checkInterrupt()) break;
                 this.self_prompter.handleUserPromptedCmd(self_prompt, isAction(command_name));
 
-                if (settings.show_command_syntax === "full") {
+                // For self-prompted commands, only show the command, no preamble
+                if (self_prompt && source === 'system') {
+                    // Silently execute; don't route the command text to chat
+                }
+                else if (settings.show_command_syntax === "full") {
                     this.routeResponse(source, res);
                 }
                 else if (settings.show_command_syntax === "shortened") {
