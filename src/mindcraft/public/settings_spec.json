@@ -39,7 +39,7 @@
     "init_message": {
         "type": "string",
         "description": "The initial message to send to the bot",
-        "default": "Respond with hello world and your name"
+        "default": ""
     },
     "only_chat_with": {
         "type": "array",
