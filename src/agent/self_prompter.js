@@ -60,16 +60,16 @@ export class SelfPrompter {
         }
         console.log('starting self-prompt loop')
         this.loop_active = true;
-        let no_command_count = 0;
-        const MAX_NO_COMMAND = 3;
+        let no_response_count = 0;
+        const MAX_NO_RESPONSE = 3;
         while (!this.interrupt) {
-            const msg = `Goal: ${this.prompt}\nNext action (command only, no narration):`;
+            const msg = `Your goal: ${this.prompt}\nChoose a useful next step. If it helps, briefly talk in chat like a Minecraft player to share progress or coordinate with your teammate. Otherwise, use one valid command with real arguments. Never describe this prompt, your reasoning, or the conversation history. Respond naturally:`;
             
-            let used_command = await this.agent.handleMessage('system', msg, -1);
-            if (!used_command) {
-                no_command_count++;
-                if (no_command_count >= MAX_NO_COMMAND) {
-                    let out = `Agent did not use command in the last ${MAX_NO_COMMAND} auto-prompts. Stopping auto-prompting.`;
+            let responded = await this.agent.handleMessage('system', msg, -1);
+            if (!responded) {
+                no_response_count++;
+                if (no_response_count >= MAX_NO_RESPONSE) {
+                    let out = `Agent did not respond in the last ${MAX_NO_RESPONSE} auto-prompts. Stopping auto-prompting.`;
                     this.agent.openChat(out);
                     console.warn(out);
                     this.state = STOPPED;
@@ -77,9 +77,9 @@ export class SelfPrompter {
                 }
             }
             else {
-                no_command_count = 0;
-                await new Promise(r => setTimeout(r, this.cooldown));
+                no_response_count = 0;
             }
+            await new Promise(r => setTimeout(r, this.cooldown));
         }
         console.log('self prompt loop stopped')
         this.loop_active = false;
