@@ -396,8 +396,11 @@ export class Agent {
                     break;
             }
             else { // conversation response
-                this.history.add(this.name, res);
-                this.routeResponse(source, res);
+                // Suppress non-command responses for self-prompts (they're just narration)
+                if (!(self_prompt && source === 'system')) {
+                    this.history.add(this.name, res);
+                    this.routeResponse(source, res);
+                }
                 break;
             }
             
