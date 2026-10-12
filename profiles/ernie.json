@@ -7,8 +7,7 @@
     "params": {
       "top_p": 0.95,
       "top_k": 20,
-      "temperature": 0.3,
-      "max_tokens": 500
+      "temperature": 0.3
     }
   },
   "goal": "Defeat the Ender Dragon. Work toward this goal step by step, gather the resources you need, and coordinate with Bert.",
