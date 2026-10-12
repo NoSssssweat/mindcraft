@@ -2,40 +2,25 @@ import { GoogleGenAI } from '@google/genai';
 import { strictFormat } from '../utils/text.js';
 import { getKey } from '../utils/keys.js';
 
-
 export class Gemini {
     static prefix = 'google';
     constructor(model_name, url, params) {
-        this.model_name = model_name;
+        // Bereinige den Modellnamen: Entferne "models/" oder "google/", falls das Framework dies mitsendet
+        this.model_name = model_name ? model_name.replace(/^(models\/|google\/)/, '') : "gemini-2.5-flash";
         this.params = params;
         this.safetySettings = [
-            {
-                "category": "HARM_CATEGORY_DANGEROUS",
-                "threshold": "BLOCK_NONE",
-            },
-            {
-                "category": "HARM_CATEGORY_HARASSMENT",
-                "threshold": "BLOCK_NONE",
-            },
-            {
-                "category": "HARM_CATEGORY_HATE_SPEECH",
-                "threshold": "BLOCK_NONE",
-            },
-            {
-                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                "threshold": "BLOCK_NONE",
-            },
-            {
-                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                "threshold": "BLOCK_NONE",
-            },
+            { "category": "HARM_CATEGORY_DANGEROUS", "threshold": "BLOCK_NONE" },
+            { "category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE" },
+            { "category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE" },
+            { "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE" },
+            { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE" },
         ];
-        console.log('------------------------------------------------');
-        console.log(getKey('GEMINI_API_KEY'));
-        console.log('------------------------------------------------');
-        this.genAI = new GoogleGenAI({apiKey: getKey('GEMINI_API_KEY'),
-        baseUrl: 'https://generativelanguage.googleapis.com'
-                                     });
+        
+        // Initialisiere die Instanz sauber mit Deaktivierung des Vertex-Modus
+        this.genAI = new GoogleGenAI({
+            apiKey: getKey('GEMINI_API_KEY'),
+            baseUrl: 'https://generativelanguage.googleapis.com'
+        });
     }
 
     async sendRequest(turns, systemMessage) {
@@ -50,19 +35,19 @@ export class Gemini {
             });
         }
 
+        // Das neue SDK erwartet System-Anweisungen und Parameter flach in der 'config'
         const result = await this.genAI.models.generateContent({
-            model: this.model_name || "gemini-2.5-flash",
+            model: this.model_name,
             contents: contents,
-            safetySettings: this.safetySettings,
             config: {
-                systemInstruction: systemMessage,
+                systemInstruction: systemMessage || undefined,
+                safetySettings: this.safetySettings,
                 ...(this.params || {})
             }
         });
-        const response = await result.text;
-
+        
+        const response = result.text;
         console.log('Received.');
-
         return response;
     }
 
@@ -85,7 +70,7 @@ export class Gemini {
         contents.push({
             role: 'user',
             parts: [{ text: 'SYSTEM: Vision response' }, imagePart]
-        })
+        });
 
         let res = null;
         try {
@@ -93,17 +78,17 @@ export class Gemini {
             const result = await this.genAI.models.generateContent({
                 model: this.model_name,
                 contents: contents,
-                safetySettings: this.safetySettings,
-                generationConfig: {
+                config: {
+                    systemInstruction: systemMessage || undefined,
+                    safetySettings: this.safetySettings,
                     ...(this.params || {})
-                },
-                systemInstruction: systemMessage
+                }
             });
-            res = await result.text;
+            res = result.text;
             console.log('Received.');
         } catch (err) {
-            console.log(err);
-            if (err.message.includes("Image input modality is not enabled for models/")) {
+            console.error(err);
+            if (err.message && err.message.includes("modality is not enabled")) {
                 res = "Vision is only supported by certain models.";
             } else {
                 res = "An unexpected error occurred, please try again.";
@@ -116,19 +101,21 @@ export class Gemini {
         const result = await this.genAI.models.embedContent({
             model: this.model_name || "gemini-embedding-001",
             contents: text,
-        })
+        });
 
         return result.embeddings;
     }
 }
 
 const sendAudioRequest = async (text, model, voice, url) => {
-    const ai = new GoogleGenAI({apiKey: getKey('GEMINI_API_KEY')
-    ,
-        baseUrl: 'https://generativelanguage.googleapis.com'  });
+    const cleanedModel = model ? model.replace(/^(models\/|google\/)/, '') : "gemini-2.5-flash";
+    const ai = new GoogleGenAI({
+        apiKey: getKey('GEMINI_API_KEY'),
+        baseUrl: 'https://generativelanguage.googleapis.com'
+    });
 
     const response = await ai.models.generateContent({
-        model: model,
+        model: cleanedModel,
         contents: [{ parts: [{text: text}] }],
         config: {
             responseModalities: ['AUDIO'],
@@ -138,7 +125,7 @@ const sendAudioRequest = async (text, model, voice, url) => {
                 },
             },
         },
-    })
+    });
 
     const pcmBase64 = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!pcmBase64) {
@@ -146,16 +133,13 @@ const sendAudioRequest = async (text, model, voice, url) => {
         return null;
     }
 
-    // Wrap PCM in a minimal WAV container so ffplay can decode it.
     const pcmBuffer = Buffer.from(pcmBase64, 'base64');
     const wavHeader = createWavHeader(pcmBuffer.length, 24000, 1, 16);
     const wavBuffer = Buffer.concat([wavHeader, pcmBuffer]);
 
-    const wavBase64 = wavBuffer.toString('base64');
-    return wavBase64;
-}
+    return wavBuffer.toString('base64');
+};
 
-// helper: create PCM WAV header
 function createWavHeader(dataLength, sampleRate, channels, bitsPerSample) {
     const header = Buffer.alloc(44);
     const byteRate = sampleRate * channels * bitsPerSample / 8;
@@ -165,8 +149,8 @@ function createWavHeader(dataLength, sampleRate, channels, bitsPerSample) {
     header.writeUInt32LE(36 + dataLength, 4);
     header.write('WAVE', 8);
     header.write('fmt ', 12);
-    header.writeUInt32LE(16, 16); // PCM
-    header.writeUInt16LE(1, 20); // Audio format = PCM
+    header.writeUInt32LE(16, 16);
+    header.writeUInt16LE(1, 20);
     header.writeUInt16LE(channels, 22);
     header.writeUInt32LE(sampleRate, 24);
     header.writeUInt32LE(byteRate, 28);
@@ -179,4 +163,4 @@ function createWavHeader(dataLength, sampleRate, channels, bitsPerSample) {
 
 export const TTSConfig = {
     sendAudioRequest: sendAudioRequest,
-}
+};
