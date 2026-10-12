@@ -33,7 +33,9 @@ export class Gemini {
         console.log('------------------------------------------------');
         console.log(getKey('GEMINI_API_KEY'));
         console.log('------------------------------------------------');
-        this.genAI = new GoogleGenAI({apiKey: getKey('GEMINI_API_KEY')});
+        this.genAI = new GoogleGenAI({apiKey: getKey('GEMINI_API_KEY'),
+        baseUrl: 'https://generativelanguage.googleapis.com'
+                                     });
     }
 
     async sendRequest(turns, systemMessage) {
@@ -121,7 +123,9 @@ export class Gemini {
 }
 
 const sendAudioRequest = async (text, model, voice, url) => {
-    const ai = new GoogleGenAI({apiKey: getKey('GEMINI_API_KEY')});
+    const ai = new GoogleGenAI({apiKey: getKey('GEMINI_API_KEY')
+    ,
+        baseUrl: 'https://generativelanguage.googleapis.com'  });
 
     const response = await ai.models.generateContent({
         model: model,
