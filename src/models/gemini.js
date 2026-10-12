@@ -5,7 +5,7 @@ import { getKey } from '../utils/keys.js';
 export class Gemini {
     static prefix = 'google';
     constructor(model_name, url, params) {
-        // Bereinige den Modellnamen
+        // Bereinige den Modellnamen von Präfixen
         this.model_name = model_name ? model_name.replace(/^(models\/|google\/)/, '') : "gemini-2.5-flash";
         this.params = params;
         this.safetySettings = [
@@ -17,7 +17,7 @@ export class Gemini {
         
         this.apiKey = getKey('GEMINI_API_KEY');
 
-        // Wir erstellen die Instanz nur, damit das Mindcraft-Framework beim Instanziieren nicht meckert
+        // Dummy-Instanz für die Framework-Kompatibilität von Mindcraft
         this.genAI = new GoogleGenAI({ apiKey: this.apiKey });
     }
 
