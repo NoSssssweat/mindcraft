@@ -137,8 +137,10 @@ export class Gemini {
     }
 
     async embed(text) {
-        const fallbackModel = this.model_name || "text-embedding-004";
-        const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + fallbackModel + ':embedContent';
+        const embeddingModel = this.model_name?.startsWith('gemini-embedding-')
+            ? this.model_name
+            : 'gemini-embedding-001';
+        const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + embeddingModel + ':embedContent';
         
         const response = await fetch(targetUrl, {
             method: 'POST',
