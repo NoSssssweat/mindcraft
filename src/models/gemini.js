@@ -5,7 +5,7 @@ import { getKey } from '../utils/keys.js';
 export class Gemini {
     static prefix = 'google';
     constructor(model_name, url, params) {
-        // Bereinige den Modellnamen: Entferne "models/" oder "google/", falls das Framework dies mitsendet
+        // Bereinige den Modellnamen von Framework-Präfixen
         this.model_name = model_name ? model_name.replace(/^(models\/|google\/)/, '') : "gemini-2.5-flash";
         this.params = params;
         this.safetySettings = [
@@ -18,17 +18,21 @@ export class Gemini {
         
         const apiKey = getKey('GEMINI_API_KEY');
 
-        // Bereinige kollidierende Umgebungsvariablen im Docker-Container
+        // Bereinige alle Cloud-Identitäten radikal aus der Laufzeit
         delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
         delete process.env.GOOGLE_GCLOUD_ADC_JSON;
         delete process.env.GOOGLE_CLOUD_PROJECT;
         delete process.env.GCLOUD_PROJECT;
 
-        // WICHTIG: Übergebe den apiKey direkt UND setze baseUrl explizit auf die Developer-API
+        // WICHTIGSTE ÄNDERUNG: Wir injecten den Key in das optionale 'httpOptions'-Objekt,
+        // um die automatische OAuth-Erkennung des SDKs vollständig auszuhebeln.
         this.genAI = new GoogleGenAI({
             apiKey: apiKey,
-            baseUrl: 'https://generativelanguage.googleapis.com',
-            platform: 'googleai'
+            httpOptions: {
+                headers: {
+                    'x-goog-api-key': apiKey
+                }
+            }
         });
     }
 
@@ -44,7 +48,6 @@ export class Gemini {
             });
         }
 
-        // Das neue SDK erwartet System-Anweisungen und Parameter flach in der 'config'
         const result = await this.genAI.models.generateContent({
             model: this.model_name,
             contents: contents,
@@ -118,17 +121,21 @@ export class Gemini {
 
 const sendAudioRequest = async (text, model, voice, url) => {
     const cleanedModel = model ? model.replace(/^(models\/|google\/)/, '') : "gemini-2.5-flash";
-    
+    const apiKey = getKey('GEMINI_API_KEY');
+
     delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
     delete process.env.GOOGLE_GCLOUD_ADC_JSON;
     delete process.env.GOOGLE_CLOUD_PROJECT;
     delete process.env.GCLOUD_PROJECT;
 
-    // Auch hier die explizite Konfiguration erzwingen
+    // Auch hier die Header-Erzwingung anwenden
     const ai = new GoogleGenAI({
-        apiKey: getKey('GEMINI_API_KEY'),
-        baseUrl: 'https://generativelanguage.googleapis.com',
-        platform: 'googleai'
+        apiKey: apiKey,
+        httpOptions: {
+            headers: {
+                'x-goog-api-key': apiKey
+            }
+        }
     });
 
     const response = await ai.models.generateContent({
