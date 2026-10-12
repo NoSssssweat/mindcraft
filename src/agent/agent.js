@@ -277,7 +277,7 @@ export class Agent {
             return false;
         }
 
-        let responded = false;
+        let used_command = false;
         if (max_responses === null) {
             max_responses = settings.max_commands === -1 ? Infinity : settings.max_commands;
         }
@@ -347,7 +347,6 @@ export class Agent {
                 console.warn('no response')
                 break; // empty response ends loop
             }
-            responded = true;
 
             let command_name = containsCommand(res);
 
@@ -364,7 +363,11 @@ export class Agent {
                 if (checkInterrupt()) break;
                 this.self_prompter.handleUserPromptedCmd(self_prompt, isAction(command_name));
 
-                if (settings.show_command_syntax === "full") {
+                // For self-prompted commands, only show the command, no preamble
+                if (self_prompt && source === 'system') {
+                    // Silently execute; don't route the command text to chat
+                }
+                else if (settings.show_command_syntax === "full") {
                     this.routeResponse(source, res);
                 }
                 else if (settings.show_command_syntax === "shortened") {
@@ -385,21 +388,26 @@ export class Agent {
                 let execute_res = await executeCommand(this, res);
 
                 console.log('Agent executed:', command_name, 'and got:', execute_res);
+                used_command = true;
+
                 if (execute_res)
                     this.history.add('system', execute_res);
                 else
                     break;
             }
             else { // conversation response
-                this.history.add(this.name, res);
-                this.routeResponse(source, res);
+                // Suppress non-command responses for self-prompts (they're just narration)
+                if (!(self_prompt && source === 'system')) {
+                    this.history.add(this.name, res);
+                    this.routeResponse(source, res);
+                }
                 break;
             }
             
             this.history.save();
         }
 
-        return responded;
+        return used_command;
     }
 
     async routeResponse(to_player, message) {
