@@ -1,4 +1,3 @@
-import { GoogleGenAI } from '@google/genai';
 import { strictFormat } from '../utils/text.js';
 import { getKey } from '../utils/keys.js';
 
@@ -20,13 +19,10 @@ export class Gemini {
         ];
         
         this.apiKey = getKey('GEMINI_API_KEY');
-
-        // Dummy-Instanz für die Framework-Kompatibilität von Mindcraft
-        this.genAI = new GoogleGenAI({ apiKey: this.apiKey });
     }
 
     async sendRequest(turns, systemMessage) {
-        console.log('Awaiting Google API response via Direct Fetch...');
+        console.log('Awaiting Google API response via Direct Pure Fetch...');
 
         turns = strictFormat(turns);
         let contents = [];
@@ -37,8 +33,7 @@ export class Gemini {
             });
         }
 
-        // FEHLERFREIER URL-AUFBAU: Konkatenation verhindert Template-String-Parsing-Fehler im Docker-Build
-        const targetUrl = 'https://googleapis.com' + this.model_name + ':generateContent?key=' + this.apiKey;
+        const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + this.model_name + ':generateContent?key=' + this.apiKey;
         
         const response = await fetch(targetUrl, {
             method: 'POST',
@@ -59,14 +54,19 @@ export class Gemini {
         }
 
         const json = await response.json();
-        const responseText = json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts && json.candidates[0].content.parts[0] ? json.candidates[0].content.parts[0].text : '';
         
-        console.log('Received.');
-        return responseText;
+        // Absolut sichere und unzerstörbare Array-Validierung
+        if (json && json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts && json.candidates[0].content.parts[0]) {
+            console.log('Received.');
+            return json.candidates[0].content.parts[0].text || '';
+        }
+        
+        console.log('Received empty response.');
+        return '';
     }
 
     async sendVisionRequest(turns, systemMessage, imageBuffer) {
-        console.log('Awaiting Google API vision response via Direct Fetch...');
+        console.log('Awaiting Google API vision response via Direct Pure Fetch...');
         
         const imagePart = {
             inlineData: {
@@ -88,9 +88,8 @@ export class Gemini {
             parts: [{ text: 'SYSTEM: Vision response' }, imagePart]
         });
 
-        let res = null;
         try {
-            const targetUrl = 'https://googleapis.com' + this.model_name + ':generateContent?key=' + this.apiKey;
+            const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + this.model_name + ':generateContent?key=' + this.apiKey;
             
             const response = await fetch(targetUrl, {
                 method: 'POST',
@@ -111,22 +110,25 @@ export class Gemini {
             }
 
             const json = await response.json();
-            res = json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts && json.candidates[0].content.parts[0] ? json.candidates[0].content.parts[0].text : '';
-            console.log('Received.');
+            
+            if (json && json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts && json.candidates[0].content.parts[0]) {
+                console.log('Received.');
+                return json.candidates[0].content.parts[0].text || '';
+            }
+            return '';
         } catch (err) {
             console.error(err);
+            let res = "An unexpected error occurred, please try again.";
             if (err.message && err.message.includes("modality is not enabled")) {
                 res = "Vision is only supported by certain models.";
-            } else {
-                res = "An unexpected error occurred, please try again.";
             }
+            return res;
         }
-        return res;
     }
 
     async embed(text) {
         const fallbackModel = this.model_name || "text-embedding-004";
-        const targetUrl = 'https://googleapis.com' + fallbackModel + ':embedContent?key=' + this.apiKey;
+        const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + fallbackModel + ':embedContent?key=' + this.apiKey;
         
         const response = await fetch(targetUrl, {
             method: 'POST',
@@ -142,7 +144,7 @@ export class Gemini {
         }
 
         const json = await response.json();
-        return json.embedding && json.embedding.values ? json.embedding.values : [];
+        return json && json.embedding && json.embedding.values ? json.embedding.values : [];
     }
 }
 
@@ -153,7 +155,7 @@ const sendAudioRequest = async (text, model, voice, url) => {
         cleanedModel = String(model).replace(/^(models\/|google\/)/, '').trim();
     }
     
-    const targetUrl = 'https://googleapis.com' + cleanedModel + ':generateContent?key=' + apiKey;
+    const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + cleanedModel + ':generateContent?key=' + apiKey;
     
     const response = await fetch(targetUrl, {
         method: 'POST',
@@ -177,18 +179,17 @@ const sendAudioRequest = async (text, model, voice, url) => {
     }
 
     const json = await response.json();
-    const pcmBase64 = json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts && json.candidates[0].content.parts[0] && json.candidates[0].content.parts[0].inlineData ? json.candidates[0].content.parts[0].inlineData.data : null;
     
-    if (!pcmBase64) {
-        console.warn('Gemini TTS: no audio data returned');
-        return null;
+    if (json && json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts && json.candidates[0].content.parts[0] && json.candidates[0].content.parts[0].inlineData) {
+        const pcmBase64 = json.candidates[0].content.parts[0].inlineData.data;
+        const pcmBuffer = Buffer.from(pcmBase64, 'base64');
+        const wavHeader = createWavHeader(pcmBuffer.length, 24000, 1, 16);
+        const wavBuffer = Buffer.concat([wavHeader, pcmBuffer]);
+        return wavBuffer.toString('base64');
     }
 
-    const pcmBuffer = Buffer.from(pcmBase64, 'base64');
-    const wavHeader = createWavHeader(pcmBuffer.length, 24000, 1, 16);
-    const wavBuffer = Buffer.concat([wavHeader, pcmBuffer]);
-
-    return wavBuffer.toString('base64');
+    console.warn('Gemini TTS: no audio data returned');
+    return null;
 };
 
 function createWavHeader(dataLength, sampleRate, channels, bitsPerSample) {
