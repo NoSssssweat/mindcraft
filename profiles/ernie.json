@@ -1,14 +1,8 @@
 {
   "name": "Ernie",
   "model": {
-    "api": "openai",
-    "url": "http://192.168.0.184:8888/v1",
-    "model": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M",
-    "params": {
-      "top_p": 0.95,
-      "top_k": 20,
-      "temperature": 0.3
-    }
+    "api": "google",
+    "model": "gemini-3.8-flash",
   },
   "goal": "Defeat the Ender Dragon. Work toward this goal step by step, gather the resources you need, and coordinate with Bert.",
   "cooldowns": {
