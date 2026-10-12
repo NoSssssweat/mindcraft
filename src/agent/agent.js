@@ -223,7 +223,7 @@ export class Agent {
             await this.handleMessage('system', init_message, 2);
         }
         else {
-            this.openChat(`Hey, I'm ${this.name}!`);
+            this.openChat("Hello world! I am "+this.name);
         }
 
         if (hasProfileGoal) {
