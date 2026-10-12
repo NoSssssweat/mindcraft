@@ -30,7 +30,7 @@ export class Gemini {
                 "threshold": "BLOCK_NONE",
             },
         ];
-
+        console.log(getKey('GEMINI_API_KEY'));
         this.genAI = new GoogleGenAI({apiKey: getKey('GEMINI_API_KEY')});
     }
 
