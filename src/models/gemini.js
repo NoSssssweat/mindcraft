@@ -16,6 +16,20 @@ export class Gemini {
             { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE" },
         ];
         
+        // SCHRITT 1: Hole den Key aus der keys.json
+        const keyFromJSON = getKey('GEMINI_API_KEY');
+
+        // SCHRITT 2: Schreibe den Key direkt in das globale process.env-Objekt.
+        // Das neue Google SDK sucht intern zwingend nach exakt dieser Variable!
+        if (keyFromJSON) {
+            process.env.GEMINI_API_KEY = keyFromJSON;
+        }
+
+        // SCHRITT 3: Deaktiviere potenziell störende Umgebungsvariablen im Docker-Container,
+        // die das SDK in den falschen OAuth2/Cloud-Modus zwingen.
+        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+        process.env.GOOGLE_GENAI_USE_VERTEXAI = "false";
+        
         // Initialisiere die Instanz sauber mit Deaktivierung des Vertex-Modus
         this.genAI = new GoogleGenAI({
             apiKey: getKey('GEMINI_API_KEY'),
