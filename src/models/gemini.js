@@ -16,25 +16,25 @@ export class Gemini {
             { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE" },
         ];
         
-        // SCHRITT 1: Hole den Key aus der keys.json
-        const keyFromJSON = getKey('GEMINI_API_KEY');
+        // 1. Hole den API-Schlüssel aus deiner keys.json
+        const secretKey = getKey('GEMINI_API_KEY');
 
-        // SCHRITT 2: Schreibe den Key direkt in das globale process.env-Objekt.
-        // Das neue Google SDK sucht intern zwingend nach exakt dieser Variable!
-        if (keyFromJSON) {
-            process.env.GEMINI_API_KEY = keyFromJSON;
+        if (!secretKey) {
+            console.error("❌ KRITISCH: 'GEMINI_API_KEY' konnte nicht aus keys.json gelesen werden!");
+        } else {
+            // 2. Setze die vom SDK erwartete globale Umgebungsvariable hart im Prozess
+            process.env.GEMINI_API_KEY = secretKey;
         }
 
-        // SCHRITT 3: Deaktiviere potenziell störende Umgebungsvariablen im Docker-Container,
-        // die das SDK in den falschen OAuth2/Cloud-Modus zwingen.
+        // 3. RADIKALE BEREINIGUNG: Lösche alle Variablen, die das SDK in den OAuth2/Cloud-Modus zwingen
         delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-        process.env.GOOGLE_GENAI_USE_VERTEXAI = "false";
+        delete process.env.GOOGLE_GCLOUD_ADC_JSON;
         
-        // Initialisiere die Instanz sauber mit Deaktivierung des Vertex-Modus
-        this.genAI = new GoogleGenAI({
-            apiKey: getKey('GEMINI_API_KEY'),
-            baseUrl: 'https://generativelanguage.googleapis.com'
-        });
+        // 4. Vertex-Modus und Enterprise-Optionen im SDK hart unterdrücken
+        process.env.GOOGLE_GENAI_USE_VERTEXAI = "false";
+        process.env.GOOGLE_GENAI_USE_ENTERPRISE = "false";
+        // Initialisiere leer. Das SDK greift jetzt fehlerfrei auf process.env.GEMINI_API_KEY zu
+        this.genAI = new GoogleGenAI();
     }
 
     async sendRequest(turns, systemMessage) {
@@ -123,10 +123,15 @@ export class Gemini {
 
 const sendAudioRequest = async (text, model, voice, url) => {
     const cleanedModel = model ? model.replace(/^(models\/|google\/)/, '') : "gemini-2.5-flash";
-    const ai = new GoogleGenAI({
-        apiKey: getKey('GEMINI_API_KEY'),
-        baseUrl: 'https://generativelanguage.googleapis.com'
-    });
+    
+    // Umgebung für Audio-Requests absichern
+    if (getKey('GEMINI_API_KEY')) {
+        process.env.GEMINI_API_KEY = getKey('GEMINI_API_KEY');
+    }
+    delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    process.env.GOOGLE_GENAI_USE_VERTEXAI = "false";
+
+    const ai = new GoogleGenAI();
 
     const response = await ai.models.generateContent({
         model: cleanedModel,
