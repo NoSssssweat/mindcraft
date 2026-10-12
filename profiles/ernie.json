@@ -4,6 +4,11 @@
     "api": "google",
     "model": "gemini-3.5-flash-lite"
   },
+  "embedding": {
+    "api": "ollama",
+    "url": "http://192.168.2.73:11434/",
+    "model": "embeddinggemma"
+  },
   "goal": "Defeat the Ender Dragon. Work toward this goal step by step, gather the resources you need, and coordinate with Bert.",
   "cooldowns": {
     "base": 50,
