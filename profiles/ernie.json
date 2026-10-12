@@ -2,7 +2,7 @@
   "name": "Ernie",
   "model": {
     "api": "google",
-    "model": "gemini-3.8-flash",
+    "model": "gemini-3.8-flash"
   },
   "goal": "Defeat the Ender Dragon. Work toward this goal step by step, gather the resources you need, and coordinate with Bert.",
   "cooldowns": {
