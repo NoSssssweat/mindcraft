@@ -37,7 +37,7 @@ export class Gemini {
         }
 
         // PERFEKTE REST-URL NACH OFFIZIELLER DOKUMENTATION
-        const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + this.model_name + ':generateContent?key=' + this.apiKey;
+        const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + this.model_name + ':generateContent';
         
         const response = await fetch(targetUrl, {
             method: 'POST',
@@ -96,7 +96,7 @@ export class Gemini {
         });
 
         try {
-            const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + this.model_name + ':generateContent?key=' + this.apiKey;
+            const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + this.model_name + ':generateContent';
             
             const response = await fetch(targetUrl, {
                 method: 'POST',
@@ -138,7 +138,7 @@ export class Gemini {
 
     async embed(text) {
         const fallbackModel = this.model_name || "text-embedding-004";
-        const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + fallbackModel + ':embedContent?key=' + this.apiKey;
+        const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + fallbackModel + ':embedContent';
         
         const response = await fetch(targetUrl, {
             method: 'POST',
@@ -171,7 +171,7 @@ const sendAudioRequest = async (text, model, voice, url) => {
             .trim();
     }
     
-    const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + cleanedModel + ':generateContent?key=' + apiKey;
+    const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + cleanedModel + ':generateContent';
     
     const response = await fetch(targetUrl, {
         method: 'POST',
