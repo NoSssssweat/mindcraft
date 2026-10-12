@@ -5,6 +5,14 @@
     "url": "http://192.168.0.184:8888/v1",
     "model": "Mindcraft-CE/Andy-4.2-Micro-GGUF"
   },
+  "code_model": {
+    "api": "openai",
+    "url": "http://192.168.0.184:8888/v1",
+    "model": "qwen2.5-coder:14b-instruct-q8_0",
+    "params": {
+      "temperature": 0.1
+    }
+  },
   "goal": "Defeat the Ender Dragon. Work toward this goal step by step, gather the resources you need, and coordinate with Bert.",
   "cooldowns": {
     "base": 50,
