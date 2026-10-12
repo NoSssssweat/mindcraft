@@ -7,8 +7,7 @@
     "params": {
       "top_p": 0.95,
       "top_k": 20,
-      "temperature": 0.3,
-      "max_tokens": 500
+      "temperature": 0.3
     }
   },
   "goal": "Help Ernie defeat the Ender Dragon. Focus on mining and technology: gather resources, obtain iron and diamonds, craft essential gear, and coordinate your progress with Ernie in English.",
