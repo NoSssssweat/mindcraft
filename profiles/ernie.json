@@ -5,9 +5,10 @@
     "url": "http://192.168.0.184:8888/v1",
     "model": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M",
     "params": {
-      "temperature": 0.6,
       "top_p": 0.95,
-      "top_k": 20
+      "top_k": 20,
+      "temperature": 0.3,
+      "max_tokens": 500
     }
   },
   "goal": "Defeat the Ender Dragon. Work toward this goal step by step, gather the resources you need, and coordinate with Bert.",
