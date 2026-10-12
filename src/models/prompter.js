@@ -255,13 +255,7 @@ export class Prompter {
 
             if (generation?.includes('</think>')) {
                 const [_, afterThink] = generation.split('</think>')
-                generation = afterThink.trim()
-            }
-
-            // Strip narration preamble before the first command
-            const firstCmd = generation.match(/![\w_]+/);
-            if (firstCmd) {
-                generation = generation.substring(generation.indexOf(firstCmd[0]));
+                generation = afterThink
             }
 
             return generation;
