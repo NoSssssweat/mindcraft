@@ -3,15 +3,7 @@
   "model": {
     "api": "openai",
     "url": "http://192.168.0.184:8888/v1",
-    "model": "Mindcraft-CE/Andy-4.2-Micro-GGUF"
-  },
-  "code_model": {
-    "api": "openai",
-    "url": "http://192.168.0.184:8888/v1",
-    "model": "qwen2.5-coder:14b-instruct-q8_0",
-    "params": {
-      "temperature": 0.1
-    }
+    "model": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M"
   },
   "goal": "Help Ernie defeat the Ender Dragon. Focus on mining and technology: gather resources, obtain iron and diamonds, craft essential gear, and coordinate your progress with Ernie in English.",
   "cooldowns": {
