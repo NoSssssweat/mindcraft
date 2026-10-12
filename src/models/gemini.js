@@ -1,6 +1,22 @@
 import { strictFormat } from '../utils/text.js';
 import { getKey } from '../utils/keys.js';
 
+const EMBEDDING_REQUEST_INTERVAL_MS = 1000;
+let embeddingRequestQueue = Promise.resolve();
+let nextEmbeddingRequestAt = 0;
+
+function waitForEmbeddingRequestSlot() {
+    const scheduledRequest = embeddingRequestQueue.then(async () => {
+        const delay = Math.max(0, nextEmbeddingRequestAt - Date.now());
+        if (delay > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        nextEmbeddingRequestAt = Date.now() + EMBEDDING_REQUEST_INTERVAL_MS;
+    });
+    embeddingRequestQueue = scheduledRequest.catch(() => { });
+    return scheduledRequest;
+}
+
 export class Gemini {
     static prefix = 'google';
     constructor(model_name, url, params) {
@@ -137,6 +153,7 @@ export class Gemini {
     }
 
     async embed(text) {
+        await waitForEmbeddingRequestSlot();
         const embeddingModel = this.model_name?.startsWith('gemini-embedding-')
             ? this.model_name
             : 'gemini-embedding-001';
