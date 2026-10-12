@@ -4,6 +4,11 @@
     "api": "google",
     "model": "gemini-3.5-flash-lite"
   },
+  "embedding": {
+    "api": "ollama",
+    "url": "http://192.168.2.73:11434/",
+    "model": "embeddinggemma"
+  },
   "goal": "Help Ernie defeat the Ender Dragon. Focus on mining and technology: gather resources, obtain iron and diamonds, craft essential gear, and coordinate your progress with Ernie in English.",
   "cooldowns": {
     "base": 30,
