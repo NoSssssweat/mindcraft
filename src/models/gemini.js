@@ -4,10 +4,13 @@ import { getKey } from '../utils/keys.js';
 export class Gemini {
     static prefix = 'google';
     constructor(model_name, url, params) {
-        // Bereinige den Modellnamen präzise von Framework-Präfixen
+        // RADIKALE BEREINIGUNG: Entfernt zuverlässig "google/", "models/" und jegliche Whitespaces
         let cleaned = "gemini-2.5-flash";
         if (model_name) {
-            cleaned = String(model_name).replace(/^(models\/|google\/)/, '').trim();
+            cleaned = String(model_name)
+                .replace(/^google\//i, '')
+                .replace(/^models\//i, '')
+                .trim();
         }
         this.model_name = cleaned;
         this.params = params;
@@ -33,11 +36,15 @@ export class Gemini {
             });
         }
 
+        // PERFEKTE REST-URL NACH OFFIZIELLER DOKUMENTATION
         const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + this.model_name + ':generateContent?key=' + this.apiKey;
         
         const response = await fetch(targetUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-goog-api-key': this.apiKey
+            },
             body: JSON.stringify({
                 contents: contents,
                 safetySettings: this.safetySettings,
@@ -55,7 +62,7 @@ export class Gemini {
 
         const json = await response.json();
         
-        // Absolut sichere und unzerstörbare Array-Validierung
+        // STABILER UND KORREKTER ARRAY-ZUGRIFF
         if (json && json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts && json.candidates[0].content.parts[0]) {
             console.log('Received.');
             return json.candidates[0].content.parts[0].text || '';
@@ -93,7 +100,10 @@ export class Gemini {
             
             const response = await fetch(targetUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': this.apiKey
+                },
                 body: JSON.stringify({
                     contents: contents,
                     safetySettings: this.safetySettings,
@@ -132,7 +142,10 @@ export class Gemini {
         
         const response = await fetch(targetUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-goog-api-key': this.apiKey
+            },
             body: JSON.stringify({
                 content: { parts: [{ text: text }] }
             })
@@ -152,14 +165,20 @@ const sendAudioRequest = async (text, model, voice, url) => {
     const apiKey = getKey('GEMINI_API_KEY');
     let cleanedModel = "gemini-2.5-flash";
     if (model) {
-        cleanedModel = String(model).replace(/^(models\/|google\/)/, '').trim();
+        cleanedModel = String(model)
+            .replace(/^google\//i, '')
+            .replace(/^models\//i, '')
+            .trim();
     }
     
     const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + cleanedModel + ':generateContent?key=' + apiKey;
     
     const response = await fetch(targetUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+        },
         body: JSON.stringify({
             contents: [{ parts: [{ text: text }] }],
             generationConfig: {
