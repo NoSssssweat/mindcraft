@@ -2,7 +2,7 @@
   "name": "Bert",
   "model": {
     "api": "google",
-    "model": "gemini-3.8-flash"
+    "model": "gemini-3.5-flash-lite"
   },
   "goal": "Help Ernie defeat the Ender Dragon. Focus on mining and technology: gather resources, obtain iron and diamonds, craft essential gear, and coordinate your progress with Ernie in English.",
   "cooldowns": {
