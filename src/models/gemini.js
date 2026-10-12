@@ -5,39 +5,24 @@ import { getKey } from '../utils/keys.js';
 export class Gemini {
     static prefix = 'google';
     constructor(model_name, url, params) {
-        // Bereinige den Modellnamen von Framework-Präfixen
+        // Bereinige den Modellnamen
         this.model_name = model_name ? model_name.replace(/^(models\/|google\/)/, '') : "gemini-2.5-flash";
         this.params = params;
         this.safetySettings = [
-            { "category": "HARM_CATEGORY_DANGEROUS", "threshold": "BLOCK_NONE" },
+            { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE" },
             { "category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE" },
             { "category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE" },
-            { "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE" },
-            { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE" },
+            { "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE" }
         ];
         
-        const apiKey = getKey('GEMINI_API_KEY');
+        this.apiKey = getKey('GEMINI_API_KEY');
 
-        // Bereinige alle Cloud-Identitäten radikal aus der Laufzeit
-        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-        delete process.env.GOOGLE_GCLOUD_ADC_JSON;
-        delete process.env.GOOGLE_CLOUD_PROJECT;
-        delete process.env.GCLOUD_PROJECT;
-
-        // WICHTIGSTE ÄNDERUNG: Wir injecten den Key in das optionale 'httpOptions'-Objekt,
-        // um die automatische OAuth-Erkennung des SDKs vollständig auszuhebeln.
-        this.genAI = new GoogleGenAI({
-            apiKey: apiKey,
-            httpOptions: {
-                headers: {
-                    'x-goog-api-key': apiKey
-                }
-            }
-        });
+        // Wir erstellen die Instanz nur, damit das Mindcraft-Framework beim Instanziieren nicht meckert
+        this.genAI = new GoogleGenAI({ apiKey: this.apiKey });
     }
 
     async sendRequest(turns, systemMessage) {
-        console.log('Awaiting Google API response...');
+        console.log('Awaiting Google API response via Direct Fetch...');
 
         turns = strictFormat(turns);
         let contents = [];
@@ -48,22 +33,36 @@ export class Gemini {
             });
         }
 
-        const result = await this.genAI.models.generateContent({
-            model: this.model_name,
-            contents: contents,
-            config: {
-                systemInstruction: systemMessage || undefined,
-                safetySettings: this.safetySettings,
-                ...(this.params || {})
-            }
-        });
+        const targetUrl = `https://googleapis.com{this.model_name}:generateContent?key=${this.apiKey}`;
         
-        const response = result.text;
+        const response = await fetch(targetUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: contents,
+                safetySettings: this.safetySettings,
+                generationConfig: {
+                    ...(this.params || {})
+                },
+                systemInstruction: systemMessage ? { parts: [{ text: systemMessage }] } : undefined
+            })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Google API Direct Fetch Error: ${response.status} - ${errText}`);
+        }
+
+        const json = await response.json();
+        const responseText = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        
         console.log('Received.');
-        return response;
+        return responseText;
     }
 
     async sendVisionRequest(turns, systemMessage, imageBuffer) {
+        console.log('Awaiting Google API vision response via Direct Fetch...');
+        
         const imagePart = {
             inlineData: {
                 data: imageBuffer.toString('base64'),
@@ -86,17 +85,28 @@ export class Gemini {
 
         let res = null;
         try {
-            console.log('Awaiting Google API vision response...');
-            const result = await this.genAI.models.generateContent({
-                model: this.model_name,
-                contents: contents,
-                config: {
-                    systemInstruction: systemMessage || undefined,
+            const targetUrl = `https://googleapis.com{this.model_name}:generateContent?key=${this.apiKey}`;
+            
+            const response = await fetch(targetUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: contents,
                     safetySettings: this.safetySettings,
-                    ...(this.params || {})
-                }
+                    generationConfig: {
+                        ...(this.params || {})
+                    },
+                    systemInstruction: systemMessage ? { parts: [{ text: systemMessage }] } : undefined
+                })
             });
-            res = result.text;
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`Google Vision Direct Fetch Error: ${response.status} - ${errText}`);
+            }
+
+            const json = await response.json();
+            res = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
             console.log('Received.');
         } catch (err) {
             console.error(err);
@@ -110,48 +120,56 @@ export class Gemini {
     }
 
     async embed(text) {
-        const result = await this.genAI.models.embedContent({
-            model: this.model_name || "gemini-embedding-001",
-            contents: text,
+        const targetUrl = `https://googleapis.com{this.model_name || "text-embedding-004"}:embedContent?key=${this.apiKey}`;
+        
+        const response = await fetch(targetUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                content: { parts: [{ text: text }] }
+            })
         });
 
-        return result.embeddings;
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Google Embed Direct Fetch Error: ${response.status} - ${errText}`);
+        }
+
+        const json = await response.json();
+        return json.embedding?.values || [];
     }
 }
 
 const sendAudioRequest = async (text, model, voice, url) => {
-    const cleanedModel = model ? model.replace(/^(models\/|google\/)/, '') : "gemini-2.5-flash";
     const apiKey = getKey('GEMINI_API_KEY');
-
-    delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-    delete process.env.GOOGLE_GCLOUD_ADC_JSON;
-    delete process.env.GOOGLE_CLOUD_PROJECT;
-    delete process.env.GCLOUD_PROJECT;
-
-    // Auch hier die Header-Erzwingung anwenden
-    const ai = new GoogleGenAI({
-        apiKey: apiKey,
-        httpOptions: {
-            headers: {
-                'x-goog-api-key': apiKey
+    const cleanedModel = model ? model.replace(/^(models\/|google\/)/, '') : "gemini-2.5-flash";
+    
+    const targetUrl = `https://googleapis.com{cleanedModel}:generateContent?key=${apiKey}`;
+    
+    const response = await fetch(targetUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{ parts: [{ text: text }] }],
+            generationConfig: {
+                responseModalities: ['AUDIO'],
+                speechConfig: {
+                    voiceConfig: {
+                        prebuiltVoiceConfig: { voiceName: voice }
+                    }
+                }
             }
-        }
+        })
     });
 
-    const response = await ai.models.generateContent({
-        model: cleanedModel,
-        contents: [{ parts: [{text: text}] }],
-        config: {
-            responseModalities: ['AUDIO'],
-            speechConfig: {
-                voiceConfig: {
-                    prebuiltVoiceConfig: { voiceName: voice },
-                },
-            },
-        },
-    });
+    if (!response.ok) {
+        console.warn('Gemini TTS Fetch failed:', response.status);
+        return null;
+    }
 
-    const pcmBase64 = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const json = await response.json();
+    const pcmBase64 = json.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    
     if (!pcmBase64) {
         console.warn('Gemini TTS: no audio data returned');
         return null;
