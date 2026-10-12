@@ -5,8 +5,12 @@ import { getKey } from '../utils/keys.js';
 export class Gemini {
     static prefix = 'google';
     constructor(model_name, url, params) {
-        // Bereinige den Modellnamen von Präfixen
-        this.model_name = model_name ? model_name.replace(/^(models\/|google\/)/, '') : "gemini-2.5-flash";
+        // Bereinige den Modellnamen präzise von Framework-Präfixen
+        let cleaned = "gemini-2.5-flash";
+        if (model_name) {
+            cleaned = String(model_name).replace(/^(models\/|google\/)/, '').trim();
+        }
+        this.model_name = cleaned;
         this.params = params;
         this.safetySettings = [
             { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE" },
@@ -33,7 +37,8 @@ export class Gemini {
             });
         }
 
-        const targetUrl = `https://googleapis.com{this.model_name}:generateContent?key=${this.apiKey}`;
+        // FEHLERFREIER URL-AUFBAU: Konkatenation verhindert Template-String-Parsing-Fehler im Docker-Build
+        const targetUrl = 'https://googleapis.com' + this.model_name + ':generateContent?key=' + this.apiKey;
         
         const response = await fetch(targetUrl, {
             method: 'POST',
@@ -50,11 +55,11 @@ export class Gemini {
 
         if (!response.ok) {
             const errText = await response.text();
-            throw new Error(`Google API Direct Fetch Error: ${response.status} - ${errText}`);
+            throw new Error('Google API Direct Fetch Error: ' + response.status + ' - ' + errText);
         }
 
         const json = await response.json();
-        const responseText = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const responseText = json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts && json.candidates[0].content.parts[0] ? json.candidates[0].content.parts[0].text : '';
         
         console.log('Received.');
         return responseText;
@@ -85,7 +90,7 @@ export class Gemini {
 
         let res = null;
         try {
-            const targetUrl = `https://googleapis.com{this.model_name}:generateContent?key=${this.apiKey}`;
+            const targetUrl = 'https://googleapis.com' + this.model_name + ':generateContent?key=' + this.apiKey;
             
             const response = await fetch(targetUrl, {
                 method: 'POST',
@@ -102,11 +107,11 @@ export class Gemini {
 
             if (!response.ok) {
                 const errText = await response.text();
-                throw new Error(`Google Vision Direct Fetch Error: ${response.status} - ${errText}`);
+                throw new Error('Google Vision Direct Fetch Error: ' + response.status + ' - ' + errText);
             }
 
             const json = await response.json();
-            res = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            res = json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts && json.candidates[0].content.parts[0] ? json.candidates[0].content.parts[0].text : '';
             console.log('Received.');
         } catch (err) {
             console.error(err);
@@ -120,7 +125,8 @@ export class Gemini {
     }
 
     async embed(text) {
-        const targetUrl = `https://googleapis.com{this.model_name || "text-embedding-004"}:embedContent?key=${this.apiKey}`;
+        const fallbackModel = this.model_name || "text-embedding-004";
+        const targetUrl = 'https://googleapis.com' + fallbackModel + ':embedContent?key=' + this.apiKey;
         
         const response = await fetch(targetUrl, {
             method: 'POST',
@@ -132,19 +138,22 @@ export class Gemini {
 
         if (!response.ok) {
             const errText = await response.text();
-            throw new Error(`Google Embed Direct Fetch Error: ${response.status} - ${errText}`);
+            throw new Error('Google Embed Direct Fetch Error: ' + response.status + ' - ' + errText);
         }
 
         const json = await response.json();
-        return json.embedding?.values || [];
+        return json.embedding && json.embedding.values ? json.embedding.values : [];
     }
 }
 
 const sendAudioRequest = async (text, model, voice, url) => {
     const apiKey = getKey('GEMINI_API_KEY');
-    const cleanedModel = model ? model.replace(/^(models\/|google\/)/, '') : "gemini-2.5-flash";
+    let cleanedModel = "gemini-2.5-flash";
+    if (model) {
+        cleanedModel = String(model).replace(/^(models\/|google\/)/, '').trim();
+    }
     
-    const targetUrl = `https://googleapis.com{cleanedModel}:generateContent?key=${apiKey}`;
+    const targetUrl = 'https://googleapis.com' + cleanedModel + ':generateContent?key=' + apiKey;
     
     const response = await fetch(targetUrl, {
         method: 'POST',
@@ -168,7 +177,7 @@ const sendAudioRequest = async (text, model, voice, url) => {
     }
 
     const json = await response.json();
-    const pcmBase64 = json.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const pcmBase64 = json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts && json.candidates[0].content.parts[0] && json.candidates[0].content.parts[0].inlineData ? json.candidates[0].content.parts[0].inlineData.data : null;
     
     if (!pcmBase64) {
         console.warn('Gemini TTS: no audio data returned');
