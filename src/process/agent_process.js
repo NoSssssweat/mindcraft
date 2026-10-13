@@ -2,6 +2,26 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { logoutAgent } from '../mindcraft/mindserver.js';
 
+const GEMINI_REQUEST_INTERVAL_MS = 4100;
+const geminiRequestQueues = new Map();
+
+function reserveGeminiRequestSlot(modelName) {
+    const state = geminiRequestQueues.get(modelName) || {
+        queue: Promise.resolve(),
+        nextRequestAt: 0
+    };
+    const scheduledRequest = state.queue.then(async () => {
+        const delay = Math.max(0, state.nextRequestAt - Date.now());
+        if (delay > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        state.nextRequestAt = Date.now() + GEMINI_REQUEST_INTERVAL_MS;
+    });
+    state.queue = scheduledRequest.catch(() => { });
+    geminiRequestQueues.set(modelName, state);
+    return scheduledRequest;
+}
+
 const init_agent_path = fileURLToPath(new URL('./init_agent.js', import.meta.url));
 
 export class AgentProcess {
@@ -24,8 +44,26 @@ export class AgentProcess {
         args.push('-p', this.port);
 
         const agentProcess = spawn(process.execPath, args, {
-            stdio: 'inherit',
+            stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
             stderr: 'inherit',
+        });
+
+        agentProcess.on('message', message => {
+            if (message?.type !== 'gemini-rate-limit-request') return;
+            reserveGeminiRequestSlot(message.modelName).then(() => {
+                if (!agentProcess.connected) return;
+                agentProcess.send({
+                    type: 'gemini-rate-limit-granted',
+                    requestId: message.requestId
+                });
+            }).catch(error => {
+                if (!agentProcess.connected) return;
+                agentProcess.send({
+                    type: 'gemini-rate-limit-granted',
+                    requestId: message.requestId,
+                    error: error.message
+                });
+            });
         });
         
         let last_restart = Date.now();

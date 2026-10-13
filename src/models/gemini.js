@@ -3,8 +3,10 @@ import { getKey } from '../utils/keys.js';
 
 const GEMINI_REQUEST_INTERVAL_MS = 4100;
 const geminiRequestQueues = new Map();
+const pendingGeminiRequests = new Map();
+let geminiRequestId = 0;
 
-function waitForGeminiRequestSlot(modelName) {
+function waitForLocalGeminiRequestSlot(modelName) {
     const state = geminiRequestQueues.get(modelName) || {
         queue: Promise.resolve(),
         nextRequestAt: 0
@@ -19,6 +21,40 @@ function waitForGeminiRequestSlot(modelName) {
     state.queue = scheduledRequest.catch(() => { });
     geminiRequestQueues.set(modelName, state);
     return scheduledRequest;
+}
+
+if (typeof process.send === 'function') {
+    process.on('message', message => {
+        if (message?.type !== 'gemini-rate-limit-granted') return;
+        const pending = pendingGeminiRequests.get(message.requestId);
+        if (!pending) return;
+        pendingGeminiRequests.delete(message.requestId);
+        if (message.error) pending.reject(new Error(message.error));
+        else pending.resolve();
+    });
+
+    process.on('disconnect', () => {
+        for (const pending of pendingGeminiRequests.values()) {
+            pending.reject(new Error('Gemini rate limiter disconnected'));
+        }
+        pendingGeminiRequests.clear();
+    });
+}
+
+function waitForGeminiRequestSlot(modelName) {
+    if (typeof process.send !== 'function' || !process.connected) {
+        return waitForLocalGeminiRequestSlot(modelName);
+    }
+
+    const requestId = `${process.pid}-${++geminiRequestId}`;
+    return new Promise((resolve, reject) => {
+        pendingGeminiRequests.set(requestId, { resolve, reject });
+        process.send({ type: 'gemini-rate-limit-request', requestId, modelName }, error => {
+            if (!error) return;
+            pendingGeminiRequests.delete(requestId);
+            reject(error);
+        });
+    });
 }
 
 export class Gemini {
