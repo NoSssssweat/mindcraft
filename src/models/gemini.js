@@ -1,19 +1,23 @@
 import { strictFormat } from '../utils/text.js';
 import { getKey } from '../utils/keys.js';
 
-const EMBEDDING_REQUEST_INTERVAL_MS = 1000;
-let embeddingRequestQueue = Promise.resolve();
-let nextEmbeddingRequestAt = 0;
+const GEMINI_REQUEST_INTERVAL_MS = 4100;
+const geminiRequestQueues = new Map();
 
-function waitForEmbeddingRequestSlot() {
-    const scheduledRequest = embeddingRequestQueue.then(async () => {
-        const delay = Math.max(0, nextEmbeddingRequestAt - Date.now());
+function waitForGeminiRequestSlot(modelName) {
+    const state = geminiRequestQueues.get(modelName) || {
+        queue: Promise.resolve(),
+        nextRequestAt: 0
+    };
+    const scheduledRequest = state.queue.then(async () => {
+        const delay = Math.max(0, state.nextRequestAt - Date.now());
         if (delay > 0) {
             await new Promise(resolve => setTimeout(resolve, delay));
         }
-        nextEmbeddingRequestAt = Date.now() + EMBEDDING_REQUEST_INTERVAL_MS;
+        state.nextRequestAt = Date.now() + GEMINI_REQUEST_INTERVAL_MS;
     });
-    embeddingRequestQueue = scheduledRequest.catch(() => { });
+    state.queue = scheduledRequest.catch(() => { });
+    geminiRequestQueues.set(modelName, state);
     return scheduledRequest;
 }
 
@@ -54,7 +58,7 @@ export class Gemini {
 
         // PERFEKTE REST-URL NACH OFFIZIELLER DOKUMENTATION
         const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + this.model_name + ':generateContent';
-        
+        await waitForGeminiRequestSlot(this.model_name);
         const response = await fetch(targetUrl, {
             method: 'POST',
             headers: { 
@@ -113,7 +117,7 @@ export class Gemini {
 
         try {
             const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + this.model_name + ':generateContent';
-            
+            await waitForGeminiRequestSlot(this.model_name);
             const response = await fetch(targetUrl, {
                 method: 'POST',
                 headers: { 
@@ -153,12 +157,11 @@ export class Gemini {
     }
 
     async embed(text) {
-        await waitForEmbeddingRequestSlot();
         const embeddingModel = this.model_name?.startsWith('gemini-embedding-')
             ? this.model_name
             : 'gemini-embedding-001';
         const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + embeddingModel + ':embedContent';
-        
+        await waitForGeminiRequestSlot(embeddingModel);
         const response = await fetch(targetUrl, {
             method: 'POST',
             headers: { 
@@ -191,7 +194,7 @@ const sendAudioRequest = async (text, model, voice, url) => {
     }
     
     const targetUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + cleanedModel + ':generateContent';
-    
+    await waitForGeminiRequestSlot(cleanedModel);
     const response = await fetch(targetUrl, {
         method: 'POST',
         headers: { 
